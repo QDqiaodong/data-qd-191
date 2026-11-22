@@ -1,12 +1,12 @@
 # data-qd-191 · 色谱积分与标准品定量
 
-保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外推诊断。
+保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。
 
-integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。 详细字段、单位和失败边界见 [数据契约](docs/contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
+integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。v1 字段与失败边界见 [数据契约](docs/contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
 
 ## 独立安装与演示
 
-Python >=3.11，本批实际使用CPython3.12.14，运行/测试仅标准库。每仓建立独立.venv，不共享其他项目运行环境；复用公共构建缓存，锁定setuptools80.9.0/wheel0.45.1。以下命令已在本机已有uv、Python与公共缓存时实际离线执行通过；其他机器首次缺缓存时需准备依赖。
+Python >=3.11，本批实际使用CPython3.12.14，运行/测试仅标准库。每仓建立独立.venv，不共享其他项目运行环境；复用公共构建缓存，锁定setuptools80.9.0/wheel0.45.1。以下命令在本机已有uv、Python与公共缓存时可离线执行；其他机器首次缺缓存时需准备依赖。
 
 ```sh
 uv venv --offline --python 3.12 .venv
@@ -17,7 +17,22 @@ uv pip check --python .venv/bin/python
 .venv/bin/peak-quant --source fixtures/input.json --output run/report-initial.json
 ```
 
-实际6项测试通过，演示摘要：
+### v2 离线签发表演
+
+同一状态目录按顺序提交三版；重试与历史查询返回与首次提交逐字节一致的报告：
+
+```sh
+peak-quant release --store run/store --request fixtures/release/request-1.json --source fixtures/release/input.json
+peak-quant release --store run/store --request fixtures/release/request-2.json --source fixtures/release/input.json
+peak-quant release --store run/store --request fixtures/release/request-3.json --source fixtures/release/input.json
+# INPUT 被清理后仍可按原请求 ID 取回原版（等价 JSON 表示、不传 --source）
+peak-quant release --store run/store --request fixtures/release/request-1-retry.json
+peak-quant release-show --store run/store --batch batch1 --revision 1
+```
+
+首版四项全签发；第二版撤回 U/A（最近左质控被标无效，不能借用更早的质控）；第三版 U/A 因超范围暂扣、V/A 因校准依据变化而替换，两条 B 始终不动。所有浓度与边界比较均为精确 Fraction 运算。
+
+实际32项测试通过，v1 演示摘要：
 
 ```json
 {
@@ -28,8 +43,8 @@ uv pip check --python .venv/bin/python
 }
 ```
 
-报告原子新建，不覆盖旧文件或符号链接。演示路径已存在时请改用新输出名；输入结构/约束或文件错误退出2，正常业务诊断见契约。已实际核验重复JSON键拒绝且不生成结果、同名输出字节不变及符号链接不覆盖。
+报告原子新建，不覆盖旧文件或符号链接。演示路径已存在时请改用新输出名；输入结构/约束或文件错误退出2，正常业务诊断见契约。已实际核验重复JSON键拒绝且不生成结果、同名输出字节不变及符号链接不覆盖。v2 的非法请求、身份冲突、过期修订号、错误指纹与缺失历史版本同样退出2且不改变既有提交；暂扣是成功报告并退出0。
 
 ## 当前能力与后续集成
 
-自定义JSON、给定保留时间窗口、等权线性校准；不自动识峰或控制真实仪器。 合理新增需求可沿现有身份和结果接入稀释/内标、加标回收与混合峰识别；当前尚未实现这些扩展，不保证固定数量未来题目。
+自定义JSON、给定保留时间窗口、等权线性校准、逐版质控签发与更正清单；不自动识峰或控制真实仪器。 合理新增需求可沿现有身份和结果接入稀释/内标、加标回收与混合峰识别；当前尚未实现这些扩展，不保证固定数量未来题目。

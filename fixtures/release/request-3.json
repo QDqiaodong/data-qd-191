@@ -1,0 +1,55 @@
+{
+ "excluded_standards": [
+  [
+   "s2",
+   "A"
+  ]
+ ],
+ "invalid_controls": [],
+ "source_sha256": "710b05e7a06d0a840704718db83156c9d1033481fba7cf5b15f45d17dc24735e",
+ "expected_revision": 2,
+ "request_id": "req-r3",
+ "batch_id": "batch1",
+ "controls": {
+  "c_right2": {
+   "B": {
+    "tolerance": "0",
+    "target": "0.5"
+   },
+   "A": {
+    "tolerance": "0",
+    "target": "0.5"
+   }
+  },
+  "c_right": {
+   "B": {
+    "target": "0.5",
+    "tolerance": "0"
+   },
+   "A": {
+    "target": "0.5",
+    "tolerance": "0"
+   }
+  },
+  "c_left": {
+   "A": {
+    "target": "0.5",
+    "tolerance": "0"
+   },
+   "B": {
+    "target": "0.5",
+    "tolerance": "0"
+   }
+  },
+  "c_early": {
+   "A": {
+    "target": "0.5",
+    "tolerance": "0"
+   },
+   "B": {
+    "target": "0.5",
+    "tolerance": "0"
+   }
+  }
+ }
+}

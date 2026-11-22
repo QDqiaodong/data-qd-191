@@ -12,9 +12,13 @@ def pairs(items):
 
 def constant(value):raise ValueError('nonfinite JSON value')
 
+def read_limited(path,limit):
+    with open(path,'rb') as f:raw=f.read(limit+1)
+    if len(raw)>limit:raise ValueError('input over 8MB')
+    return raw
+
 def load(path):
-    with open(path,'rb') as f:raw=f.read(8000001)
-    if len(raw)>8000000:raise ValueError('input over 8MB')
+    raw=read_limited(path,8000000)
     return json.loads(raw.decode('utf-8'),object_pairs_hook=pairs,parse_constant=constant)
 
 def publish(path,result):
