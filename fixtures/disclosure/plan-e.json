@@ -1,0 +1,12 @@
+{
+  "protected": [["X", "A"]],
+  "published": [
+    {"id": "H", "analyte_id": "A", "members": ["X", "Y"], "total": "1"}
+  ],
+  "requests": [
+    {"id": "B", "analyte_id": "A", "members": ["X", "Z"]},
+    {"id": "C", "analyte_id": "A", "members": ["Y", "Z"]},
+    {"id": "D", "analyte_id": "A", "members": ["Y", "Z", "W"]},
+    {"id": "E", "analyte_id": "A", "members": ["Y", "Z"]}
+  ]
+}

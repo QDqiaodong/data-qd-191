@@ -23,3 +23,12 @@
 
 `scripts/benchmark_synthetic_demo.py` 为按来源隔离的留组盲评驱动，数据全部在脚本内现造：200 条标准（各 2,000 个整数时间点）、相邻两条配成 100 个不同来源组、30 个分析物窗口与统一参考浓度；不含任何真实物质、仪器或实验信息，benchmark 进程仅设 CPU 时间上限。`tests/test_benchmark.py` 的工作算例（S0/S1/S2/U/V/W）同为人工构造。
 
+`disclosure/` 为 v4 合计披露审查的人工小样例，完全人工构造，不含真实物质信息：
+
+- `input.json`：分析物 A（窗口 0–2）、B（窗口 2–4），三条标准使两条曲线均为「面积＝3×浓度」；未知运行 X、Y、Z、W 的 A 浓度恰为 1/3、2/3、4/3、5/3，W 的 B 浓度为 1。
+- `plan.json`：主验收计划——只保护 (X,A)，历史 H=X+Y（总值 1），请求 B=X+Z、C=Y+Z、D=Y+Z+W；结果发出 B=5/3、D=11/3 并扣留 C。
+- `plan-e.json`、`plan-swapped.json`、`plan-yw.json`：分别演示追加同成员请求 E 仍扣留、交换 B/C 优先级后决定反转、历史 H 改为 Y+W（7/3）后 B/C 发出而 D 扣留。
+- `plan-hbc-history.json`、`plan-bad-total.json`、`plan-all-withheld.json`、`plan-analyte-b.json`：分别演示历史已使保护失效（生成失败）、伪造历史总值、单请求全扣留（公开列表为空）、同一运行另一分析物独立发布。
+- `input-negative.json`、`plan-negative.json`：N 的浓度为 −1 且同时为 negative/extrapolated，演示负值与外推值原样进入合计而非被过滤成小计。
+
+

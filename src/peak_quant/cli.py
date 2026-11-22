@@ -4,6 +4,8 @@ import sys
 from .assemble import assemble
 from .benchmark import run_benchmark
 from .contrast import contrast as run_contrast
+from .disclosure import disclosure as run_disclosure
+from .disclosure import disclosure_check as run_disclosure_check
 from .explain import build_package, load_inputs
 from .io import load,publish
 from .release import release as run_release
@@ -44,7 +46,18 @@ def _benchmark(parser):
     parser.add_argument('--plan',required=True)
     parser.add_argument('--output',required=True)
 
-_SUBCOMMANDS = ('release','release-show','explain','contrast','assemble','benchmark')
+def _disclosure(parser):
+    parser.add_argument('--source',required=True)
+    parser.add_argument('--plan',required=True)
+    parser.add_argument('--output',required=True)
+
+def _disclosure_check(parser):
+    parser.add_argument('--plan',required=True)
+    parser.add_argument('--public',required=True)
+    parser.add_argument('--audit',required=True)
+
+_SUBCOMMANDS = ('release','release-show','explain','contrast','assemble','benchmark',
+                'disclosure','disclosure-check')
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='peak-quant')
@@ -55,6 +68,8 @@ def main(argv=None):
     _contrast(sub.add_parser('contrast'))
     _assemble(sub.add_parser('assemble'))
     _benchmark(sub.add_parser('benchmark'))
+    _disclosure(sub.add_parser('disclosure'))
+    _disclosure_check(sub.add_parser('disclosure-check'))
     # The v1 invocation remains the default flat form; a subparser-less call
     # keeps the historical required --source/--output contract.
     legacy=argparse.ArgumentParser(prog='peak-quant')
@@ -116,6 +131,19 @@ def main(argv=None):
                  'folds':len(report['folds']),
                  'analytes':len(report['analyte_ids'])},
                 ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
+            return 0
+        if args.command=='disclosure':
+            public,audit=run_disclosure(args.source,args.plan,args.output)
+            sys.stdout.buffer.write((json.dumps(
+                {'bundle':args.output,
+                 'issued':len(public['issued']),
+                 'decisions':len(audit['requests'])},
+                ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
+            return 0
+        if args.command=='disclosure-check':
+            summary=run_disclosure_check(args.plan,args.public,args.audit)
+            sys.stdout.buffer.write((json.dumps(
+                summary,ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
             return 0
         result=process(load(args.source));publish(args.output,result)
     except (ValueError,OSError,UnicodeError,RecursionError,json.JSONDecodeError) as e:

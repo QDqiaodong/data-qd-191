@@ -1,8 +1,8 @@
 # data-qd-191 · 色谱积分与标准品定量
 
-保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。v3 导出不含原始轨迹的候选峰解释包，并支持在离线目录联查同一最佳解释内的浓度差与固定窗口假设。
+保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。v3 导出不含原始轨迹的候选峰解释包，并支持在离线目录联查同一最佳解释内的浓度差与固定窗口假设。v4 在同一份固定合成快照上增加合计披露的离线审查与可独立复核的扣留/变化证明。
 
-integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。benchmark.py 按来源身份与精确曲线身份做留组盲评，逐折用 v1 拟合规则反推并精确计分。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)，留组盲评字段、分组与计分规则见 [benchmark 契约](docs/benchmark-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
+integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。benchmark.py 按来源身份与精确曲线身份做留组盲评，逐折用 v1 拟合规则反推并精确计分。disclosure.py 以精确有理数高斯消元按业务优先级审查合计行，并生成只含对外行的 public.json 与仅供内部复核的 audit.json。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)，留组盲评字段、分组与计分规则见 [benchmark 契约](docs/benchmark-contract.md)，合计披露审查与离线复核边界见 [披露契约](docs/disclosure-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
 
 ## 独立安装与演示
 
@@ -94,6 +94,21 @@ PLAN 把每条标准运行映射到来源 ID 并给出评分 ID；来源相同�
 ```
 
 报告原子新建，不覆盖旧文件或符号链接。演示路径已存在时请改用新输出名；输入结构/约束或文件错误退出2，正常业务诊断见契约。已实际核验重复JSON键拒绝且不生成结果、同名输出字节不变及符号链接不覆盖。v2 的非法请求、身份冲突、过期修订号、错误指纹与缺失历史版本同样退出2且不改变既有提交；暂扣是成功报告并退出0。v3 的候选/查询非法字段与引用、超 8MB 输入、不支持的包版本或损坏包同样退出2且不新建目标；解释包与查询结果重复生成逐字节一致。
+
+### 合计披露的离线审查与复核表演（v4）
+
+同一固定合成快照（曲线「面积＝3×浓度」，X/Y/Z/W 浓度 1/3、2/3、4/3、5/3，只保护 X）按业务优先级逐行试发；历史 H=X+Y 已公开，请求 B=X+Z、C=Y+Z、D=Y+Z+W：
+
+```sh
+peak-quant disclosure --source fixtures/disclosure/input.json \
+  --plan fixtures/disclosure/plan.json --output run/disclosure-main
+peak-quant disclosure-check --plan fixtures/disclosure/plan.json \
+  --public run/disclosure-main/public.json \
+  --audit run/disclosure-main/audit.json
+# 仅携带 plan.json、public.json、audit.json 到没有 SOURCE 与缓存的干净目录，复核仍通过
+```
+
+B=5/3 与 D=11/3 发出、C 扣留；C 的内部证明是有理数线性组合 (H+B−C)/2，成员系数恰为受保护单元 X 的单位向量，而最终变化证明给出一个移动 X 却不改变任何已发等式的方向。全扣留是成功（公开列表为空）；历史已确定任一受保护值、伪造历史总值、拟合或源校验失败均退出 2 且不留下 BUNDLE。同一语义输入重复生成两份文件逐字节一致，证明用精确 `Fraction` 高斯-若尔当消元求得；测试另用独立的素数模可行性 oracle 在 60 组随机 PLAN 上校对逐行决定。
 
 ## 当前能力与后续集成
 
