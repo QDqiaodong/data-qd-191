@@ -2,7 +2,7 @@
 
 保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。v3 导出不含原始轨迹的候选峰解释包，并支持在离线目录联查同一最佳解释内的浓度差与固定窗口假设。
 
-integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
+integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。benchmark.py 按来源身份与精确曲线身份做留组盲评，逐折用 v1 拟合规则反推并精确计分。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)，留组盲评字段、分组与计分规则见 [benchmark 契约](docs/benchmark-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
 
 ## 独立安装与演示
 
@@ -65,7 +65,24 @@ python scripts/assemble_pipeline_demo.py --workdir run/pipeline
 
 实测流约 33.7 MB、消费峰值 RSS 约 22 MiB、最终文件约 50 KB——归档体量不能按最终文件估算。输入、覆盖空档、重叠冲突、不可精确表示与文件错误均退出 2 且不留下目标，错误类别与运行/分片定位见[装配契约](docs/assemble-contract.md)。
 
-实际83项测试通过，v1 演示摘要：
+### 按来源隔离的留组盲评表演（benchmark）
+
+PLAN 把每条标准运行映射到来源 ID 并给出评分 ID；来源相同，或整条定义域与精确分段线性信号相同（含串联、共线点与十进制拼法差异）的标准被并查集归入同一折。每折整体留出后用其余标准按 v1 等权直线规则独立拟合，先盲推后才读取参考浓度；不足两条、浓度全同、斜率非正按固定顺序判为不可用，绝不借全批曲线救场。
+
+```sh
+# 单分析物工作算例（U/V/W 的来源与曲线关系，见 docs/benchmark-contract.md）
+.venv/bin/python -I -m unittest discover -s tests -p 'test_benchmark.py' -v
+# 大规模合成用例：200 标准 × 2000 点 × 30 分析物、100 折，
+# 仅给 benchmark 进程设 RLIMIT_CPU=180 秒，逐折核对范围、斜率 998 与零误差
+.venv/bin/python -I scripts/benchmark_synthetic_demo.py --workdir run/benchmark
+# 缩小规模的快速离线核对
+.venv/bin/python -I scripts/benchmark_synthetic_demo.py --workdir run/benchmark-small \
+  --runs 8 --points 200 --analytes 3 --cpu 60
+```
+
+报告含版本与逐折 `held_out_run_ids`/`training_run_ids`/`scored_run_ids`，可逐折复核；全部数值为精确 `Fraction` 的约分整数/分数字符串，输入对象与数组重排后报告字节一致；无效文件、非法引用或输出冲突退出 2 且不覆盖已有文件或符号链接。
+
+实际105项测试通过，v1 演示摘要：
 
 ```json
 {

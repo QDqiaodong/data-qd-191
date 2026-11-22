@@ -2,7 +2,8 @@ import json
 from pathlib import Path
 import unittest
 from fractions import Fraction
-from peak_quant.integrate import integrate
+from peak_quant.checks import number
+from peak_quant.integrate import area_of, integrate, integrate_points
 from peak_quant.service import process
 
 def sample():return json.loads((Path(__file__).resolve().parents[1]/'fixtures/input.json').read_text())
@@ -21,6 +22,19 @@ class QuantTests(unittest.TestCase):
         self.assertEqual(r['area'],'3/4')
         self.assertEqual(r['baseline_start'],'2');self.assertEqual(r['baseline_end'],'3')
         self.assertEqual(r['apex_time'],'1')
+
+    def test_fast_area_matches_segment_integration_exactly(self):
+        # The benchmark fast path must reproduce the v1 segment sum exactly,
+        # including endpoint interpolation, baseline subtraction and signs.
+        samples=[['0','1'],['0.5','4'],['1','-2'],['1.5','5'],['2','2']]
+        points=[(number(t),number(y)) for t,y in samples]
+        for lo,hi in [(Fraction(0),Fraction(2)),(Fraction(1,4),Fraction(7,4)),
+                      (Fraction(1,2),Fraction(2)),(Fraction(0),Fraction(1))]:
+            full=integrate(samples,lo,hi)
+            self.assertEqual(Fraction(full['area']),area_of(points,lo,hi))
+            # And via pre-parsed points with shared endpoint interpolation.
+            self.assertEqual(Fraction(integrate_points(points,lo,hi)['area']),
+                             area_of(points,lo,hi))
 
     def test_negative_integral_is_not_clamped(self):
         d=sample();d['runs'][2]['samples'][1][1]='1'

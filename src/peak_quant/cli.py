@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 from .assemble import assemble
+from .benchmark import run_benchmark
 from .contrast import contrast as run_contrast
 from .explain import build_package, load_inputs
 from .io import load,publish
@@ -38,7 +39,12 @@ def _contrast(parser):
     parser.add_argument('--query',required=True)
     parser.add_argument('--output',required=True)
 
-_SUBCOMMANDS = ('release','release-show','explain','contrast','assemble')
+def _benchmark(parser):
+    parser.add_argument('--source',required=True)
+    parser.add_argument('--plan',required=True)
+    parser.add_argument('--output',required=True)
+
+_SUBCOMMANDS = ('release','release-show','explain','contrast','assemble','benchmark')
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='peak-quant')
@@ -48,6 +54,7 @@ def main(argv=None):
     _explain(sub.add_parser('explain'))
     _contrast(sub.add_parser('contrast'))
     _assemble(sub.add_parser('assemble'))
+    _benchmark(sub.add_parser('benchmark'))
     # The v1 invocation remains the default flat form; a subparser-less call
     # keeps the historical required --source/--output contract.
     legacy=argparse.ArgumentParser(prog='peak-quant')
@@ -100,6 +107,15 @@ def main(argv=None):
                 return 2
             sys.stdout.buffer.write((json.dumps(
                 {'output':args.output},ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
+            return 0
+        if args.command=='benchmark':
+            report=run_benchmark(args.source,args.plan,args.output)
+            sys.stdout.buffer.write((json.dumps(
+                {'output':args.output,
+                 'schema_version':report['schema_version'],
+                 'folds':len(report['folds']),
+                 'analytes':len(report['analyte_ids'])},
+                ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
             return 0
         result=process(load(args.source));publish(args.output,result)
     except (ValueError,OSError,UnicodeError,RecursionError,json.JSONDecodeError) as e:

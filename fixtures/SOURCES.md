@@ -21,3 +21,5 @@
 - `assemble/stream.jsonl`：四片各一次的 JSON Lines（含标准片），未知运行装配后恰为 `(0,0),(1,3),(2,0)`，旧定量入口面积 3、浓度 1。
 - `scripts/assemble_pipeline_demo.py`：200×8×1024 的大规模合成分片管道驱动（轮转发送、消费进程 192 MiB 内存上限、独立 oracle 逐点核对），数据全部在脚本内现造。
 
+`scripts/benchmark_synthetic_demo.py` 为按来源隔离的留组盲评驱动，数据全部在脚本内现造：200 条标准（各 2,000 个整数时间点）、相邻两条配成 100 个不同来源组、30 个分析物窗口与统一参考浓度；不含任何真实物质、仪器或实验信息，benchmark 进程仅设 CPU 时间上限。`tests/test_benchmark.py` 的工作算例（S0/S1/S2/U/V/W）同为人工构造。
+
