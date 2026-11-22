@@ -1,8 +1,8 @@
 # data-qd-191 · 色谱积分与标准品定量
 
-保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。
+保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。v3 导出不含原始轨迹的候选峰解释包，并支持在离线目录联查同一最佳解释内的浓度差与固定窗口假设。
 
-integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。v1 字段与失败边界见 [数据契约](docs/contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
+integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。v1 字段与失败边界见 [数据契约](docs/contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
 
 ## 独立安装与演示
 
@@ -32,7 +32,21 @@ peak-quant release-show --store run/store --batch batch1 --revision 1
 
 首版四项全签发；第二版撤回 U/A（最近左质控被标无效，不能借用更早的质控）；第三版 U/A 因超范围暂扣、V/A 因校准依据变化而替换，两条 B 始终不动。所有浓度与边界比较均为精确 Fraction 运算。
 
-实际32项测试通过，v1 演示摘要：
+### v3 离线解释包与浓度联查表演
+
+```sh
+peak-quant explain --source fixtures/explain/input.json \
+  --candidates fixtures/explain/candidates.json --output run/package.json
+peak-quant contrast --package run/package.json \
+  --query fixtures/explain/query-a-minus-b.json --output run/range.json
+# 仅复制 package.json 与查询文件到新目录、挪走 INPUT/CANDIDATES 后仍可联查
+peak-quant contrast --package package.json \
+  --query fixtures/explain/query-pin-a2.json --output run/pinned.json
+```
+
+最佳解释先最大化已选峰数、再最小化总 penalty；包内记录两项指标、字典序代表和每分析物在最佳集合中可取的全部候选及可否缺位，从不按每套最佳解释存一份记录。联查只在原最佳集合内筛选 pins 与 term 覆盖，分数用精确 Fraction 求和并输出约分整数/分数字符串；无联合解释时成功写出 `no_joint_explanation`。30 个分析物各有两个同 penalty 候选（共 2³⁰ 套最佳解释）时，全系数 1 的极值 30/60 由动态规划直接求得，测试另用独立穷举器在小实例上校对指标、可取集合与带 pins 的极值见证。
+
+实际58项测试通过，v1 演示摘要：
 
 ```json
 {
@@ -43,7 +57,7 @@ peak-quant release-show --store run/store --batch batch1 --revision 1
 }
 ```
 
-报告原子新建，不覆盖旧文件或符号链接。演示路径已存在时请改用新输出名；输入结构/约束或文件错误退出2，正常业务诊断见契约。已实际核验重复JSON键拒绝且不生成结果、同名输出字节不变及符号链接不覆盖。v2 的非法请求、身份冲突、过期修订号、错误指纹与缺失历史版本同样退出2且不改变既有提交；暂扣是成功报告并退出0。
+报告原子新建，不覆盖旧文件或符号链接。演示路径已存在时请改用新输出名；输入结构/约束或文件错误退出2，正常业务诊断见契约。已实际核验重复JSON键拒绝且不生成结果、同名输出字节不变及符号链接不覆盖。v2 的非法请求、身份冲突、过期修订号、错误指纹与缺失历史版本同样退出2且不改变既有提交；暂扣是成功报告并退出0。v3 的候选/查询非法字段与引用、超 8MB 输入、不支持的包版本或损坏包同样退出2且不新建目标；解释包与查询结果重复生成逐字节一致。
 
 ## 当前能力与后续集成
 

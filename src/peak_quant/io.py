@@ -14,7 +14,7 @@ def constant(value):raise ValueError('nonfinite JSON value')
 
 def read_limited(path,limit):
     with open(path,'rb') as f:raw=f.read(limit+1)
-    if len(raw)>limit:raise ValueError('input over 8MB')
+    if len(raw)>limit:raise ValueError(f'input over {limit} bytes')
     return raw
 
 def load(path):

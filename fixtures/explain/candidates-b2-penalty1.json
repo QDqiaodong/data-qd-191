@@ -1,0 +1,48 @@
+{
+  "analyte_order": [
+    "A",
+    "B"
+  ],
+  "candidates": [
+    {
+      "run_id": "u1",
+      "analyte_id": "A",
+      "candidate_id": "a1",
+      "window": [
+        "0",
+        "2"
+      ],
+      "penalty": 0
+    },
+    {
+      "run_id": "u1",
+      "analyte_id": "A",
+      "candidate_id": "a2",
+      "window": [
+        "2",
+        "4"
+      ],
+      "penalty": 0
+    },
+    {
+      "run_id": "u1",
+      "analyte_id": "B",
+      "candidate_id": "b1",
+      "window": [
+        "2",
+        "4"
+      ],
+      "penalty": 0
+    },
+    {
+      "run_id": "u1",
+      "analyte_id": "B",
+      "candidate_id": "b2",
+      "window": [
+        "4",
+        "6"
+      ],
+      "penalty": 1
+    }
+  ]
+}
