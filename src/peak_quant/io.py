@@ -21,12 +21,16 @@ def load(path):
     raw=read_limited(path,8000000)
     return json.loads(raw.decode('utf-8'),object_pairs_hook=pairs,parse_constant=constant)
 
-def publish(path,result):
-    payload=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n').encode('utf-8')
+def publish_bytes(path,payload):
     target=Path(path);target.parent.mkdir(parents=True,exist_ok=True);temporary=None
     try:
         with tempfile.NamedTemporaryFile(dir=target.parent,prefix='.publish-',delete=False) as f:
             temporary=Path(f.name);f.write(payload);f.flush();os.fsync(f.fileno())
+        # os.link refuses to replace an existing file or symlink.
         os.link(temporary,target)
     finally:
         if temporary is not None:temporary.unlink(missing_ok=True)
+
+def publish(path,result):
+    payload=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n').encode('utf-8')
+    publish_bytes(path,payload)

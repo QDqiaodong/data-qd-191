@@ -15,3 +15,9 @@
 - `explain/candidates.json`：A 的 a1/a2 与 B 的 b1/b2 四个候选，penalty 全为 0；`candidates-b2-penalty1.json` 仅把 b2 的 penalty 改为 1，用于演示最佳集合收缩。
 - `query-a-minus-b.json`、`query-pin-a2.json`、`query-pin-conflict.json`：分别演示 A−B 极值、固定 A=a2、以及互相冲突的 pins（后者成功返回 `no_joint_explanation`）。
 
+`assemble/` 为分片流装配的手工小样例，完全人工构造，不含任何真实仪器信息：
+
+- `assemble/plan.json`：单分析物（窗口 0–2），两条标准（浓度 0/2）与一条未知运行；未知运行区间 [0,2] 由左右两片拼成，锚点分别为 (0,0)/(3,1) 与 (0,1)/(3,2)。
+- `assemble/stream.jsonl`：四片各一次的 JSON Lines（含标准片），未知运行装配后恰为 `(0,0),(1,3),(2,0)`，旧定量入口面积 3、浓度 1。
+- `scripts/assemble_pipeline_demo.py`：200×8×1024 的大规模合成分片管道驱动（轮转发送、消费进程 192 MiB 内存上限、独立 oracle 逐点核对），数据全部在脚本内现造。
+

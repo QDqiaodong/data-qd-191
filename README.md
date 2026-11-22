@@ -2,7 +2,7 @@
 
 保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。v3 导出不含原始轨迹的候选峰解释包，并支持在离线目录联查同一最佳解释内的浓度差与固定窗口假设。
 
-integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。v1 字段与失败边界见 [数据契约](docs/contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
+integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
 
 ## 独立安装与演示
 
@@ -46,7 +46,26 @@ peak-quant contrast --package package.json \
 
 最佳解释先最大化已选峰数、再最小化总 penalty；包内记录两项指标、字典序代表和每分析物在最佳集合中可取的全部候选及可否缺位，从不按每套最佳解释存一份记录。联查只在原最佳集合内筛选 pins 与 term 覆盖，分数用精确 Fraction 求和并输出约分整数/分数字符串；无联合解释时成功写出 `no_joint_explanation`。30 个分析物各有两个同 penalty 候选（共 2³⁰ 套最佳解释）时，全系数 1 的极值 30/60 由动态规划直接求得，测试另用独立穷举器在小实例上校对指标、可取集合与带 pins 的极值见证。
 
-实际58项测试通过，v1 演示摘要：
+### 分片流装配表演（v1 源文件重建）
+
+归档只剩 PLAN 清单与一次性分片流；锚点给出每片精确仿射对时，重叠是同一条曲线的冗余观测。`assemble` 把子进程标准输入的 JSON Lines 落本地临时空间，精确 Fraction 对时、比对重叠（含单点相接）、按真实斜率转折去共线，最后原子新建一份只有 v1 字段的源文件，可直接跑旧定量入口：
+
+```sh
+peak-quant assemble --plan fixtures/assemble/plan.json \
+  --output run/assembled.json < fixtures/assemble/stream.jsonl
+peak-quant --source run/assembled.json --output run/quant.json
+# 未知运行恰为 (0,0),(1,3),(2,0)；旧入口面积 3、浓度 1
+```
+
+大规模实跑由独立驱动完成：200 条运行 × 8 片 × 1,024 采样，按片序号轮转发送（最后一轮前没有任何运行集齐），只给消费进程设 `RLIMIT_AS=192 MiB`，独立 oracle 逐点核对全部 200 条运行：
+
+```sh
+python scripts/assemble_pipeline_demo.py --workdir run/pipeline
+```
+
+实测流约 33.7 MB、消费峰值 RSS 约 22 MiB、最终文件约 50 KB——归档体量不能按最终文件估算。输入、覆盖空档、重叠冲突、不可精确表示与文件错误均退出 2 且不留下目标，错误类别与运行/分片定位见[装配契约](docs/assemble-contract.md)。
+
+实际83项测试通过，v1 演示摘要：
 
 ```json
 {
