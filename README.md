@@ -2,7 +2,7 @@
 
 保留时间窗与线性基线决定逐段积分，标准品响应和浓度决定校准曲线，未知样据此计算浓度、负值与外插诊断。v2 进一步在本地状态目录上实现逐版质量签发、独立质控判定与供下游增量应用的更正清单。v3 导出不含原始轨迹的候选峰解释包，并支持在离线目录联查同一最佳解释内的浓度差与固定窗口假设。v4 在同一份固定合成快照上增加合计披露的离线审查与可独立复核的扣留/变化证明。
 
-integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。benchmark.py 按来源身份与精确曲线身份做留组盲评，逐折用 v1 拟合规则反推并精确计分。disclosure.py 以精确有理数高斯消元按业务优先级审查合计行，并生成只含对外行的 public.json 与仅供内部复核的 audit.json。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)，留组盲评字段、分组与计分规则见 [benchmark 契约](docs/benchmark-contract.md)，合计披露审查与离线复核边界见 [披露契约](docs/disclosure-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
+integrate.py 保留端点插值及分段面积；calibrate.py 拟合浓度关系；service.py 把同一积分证据用于定量。request.py 严格校验签发请求并计算规范身份；release.py 负责校准/质控/签发计算、原子提交、崩溃恢复与历史查询。selection.py 以精确动态规划求最佳解释集合而不逐套枚举；candidates.py 校验候选批次；explain.py 生成自包含解释包；contrast.py 离线校验包并回答带 pins 的极值联查。assemble.py 从不可重读的分片流按锚点精确对时、精确比对重叠并去共线，装配出可直接定量的 v1 源文件。benchmark.py 按来源身份与精确曲线身份做留组盲评，逐折用 v1 拟合规则反推并精确计分。disclosure.py 以精确有理数高斯消元按业务优先级审查合计行，并生成只含对外行的 public.json 与仅供内部复核的 audit.json。reconcile.py 在各批本地 v1 定量之上做跨批零点对齐：生成树残差与树上差分判定整板取舍，精确 Fraction 给出每笔查询净差的极值、见证与入账值。v1 字段与失败边界见 [数据契约](docs/contract.md)，分片装配契约见 [装配契约](docs/assemble-contract.md)，签发字段、原因码与状态布局见 [签发契约](docs/release-contract.md)，解释包与联查字段见 [v3 契约](docs/explain-contract.md)，留组盲评字段、分组与计分规则见 [benchmark 契约](docs/benchmark-contract.md)，合计披露审查与离线复核边界见 [披露契约](docs/disclosure-contract.md)。全部样例为自制合成数据，许可见 [来源](fixtures/SOURCES.md)。
 
 ## 独立安装与演示
 
@@ -109,6 +109,23 @@ peak-quant disclosure-check --plan fixtures/disclosure/plan.json \
 ```
 
 B=5/3 与 D=11/3 发出、C 扣留；C 的内部证明是有理数线性组合 (H+B−C)/2，成员系数恰为受保护单元 X 的单位向量，而最终变化证明给出一个移动 X 却不改变任何已发等式的方向。全扣留是成功（公开列表为空）；历史已确定任一受保护值、伪造历史总值、拟合或源校验失败均退出 2 且不留下 BUNDLE。同一语义输入重复生成两份文件逐字节一致，证明用精确 `Fraction` 高斯-若尔当消元求得；测试另用独立的素数模可行性 oracle 在 60 组随机 PLAN 上校对逐行决定。
+
+### 跨批对账与对接板取舍表演（v5）
+
+各离线工作站按本批 v1 曲线反推本地浓度；对接板把同一份虚拟对照件登记在两个不同批次的未知运行上，只允许加性零点修正、不重拟批内斜率。板号绑定整条记录及其全部读数，因此取舍以整板为单位：先验全板，全板一致即只承认不剔板；全板不连通直接判无法对账；否则枚举只剔一块板、且对所有所选分析物同时成立并保持全体连到 anchor 的情形，取各分析物候选的交集，不允许换分析物换板号或剔两块。
+
+```sh
+peak-quant reconcile --sources fixtures/reconcile/sources \
+  --plan fixtures/reconcile/plan.json --output run/reconcile.json
+# 可剔板恰为 AB、BC、CA（剔 CD 会断开 D）；查询区间 [0,1] 与 [1,1]，
+# 前者见证 AB/BC、不入账，后者两端见证均为 AB、入账值 1
+.venv/bin/python -I -m unittest discover -s tests -p 'test_reconcile.py' -v
+# 月末大例：12,000 批共用一份底稿、12,000 块板的单环；只给对账进程
+# 设 RLIMIT_CPU=90 秒，生成 fixture 与读报告断言不计入该配额
+.venv/bin/python -I scripts/reconcile_month_end_demo.py --workdir run/month-end
+```
+
+每块保留板要求左右统一浓度精确相等，环上每条约束都参与判定。实现对每张批次图建一棵生成树，用非树边精确残差与树上差分（坏/好残差计数、带符号和、平方和）一次性判定每条树边割集能否由单一平移修复；查询只在同一可行情形内统一左右读数后相减，取精确最小/最大值与字典序最小的见证板号，仅当两端相等才给可入账净差。无法对账（区分 `full_graph_disconnected` 与 `no_common_single_panel_repair`）是成功报告、退出 0，仍列出全部查询与本地浓度；计划/引用/拟合/交付错误退出 2 且不新建、不覆盖目标或符号链接。报告对输入重排逐字节稳定，字段与复核步骤见 [对账契约](docs/reconcile-contract.md)。
 
 ## 当前能力与后续集成
 

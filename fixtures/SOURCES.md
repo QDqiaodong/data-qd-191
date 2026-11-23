@@ -31,4 +31,10 @@
 - `plan-hbc-history.json`、`plan-bad-total.json`、`plan-all-withheld.json`、`plan-analyte-b.json`：分别演示历史已使保护失效（生成失败）、伪造历史总值、单请求全扣留（公开列表为空）、同一运行另一分析物独立发布。
 - `input-negative.json`、`plan-negative.json`：N 的浓度为 −1 且同时为 negative/extrapolated，演示负值与外推值原样进入合计而非被过滤成小计。
 
+`reconcile/` 为跨批对账（v5）的人工小样例，完全人工构造，不含真实样本或仪器信息：
+
+- `sources/A.json`..`D.json`：四份独立 v1 源，标准均给出「面积＝浓度」的本地曲线（三角峰高 2、面积 2、斜率 2），未知运行的本地浓度按 0/1/2 等整数设计，可含对接专用的独立记录。
+- `plan.json`：四批 A/B/C/D、锚点 A、单分析物 X；板 AB、BC、CD 两边读数均为 0，闭环板 CA 左（C）读数 1、右（A）读数 0；查询为 B 的 0 减 C 的 0、C 的 2 减 D 的 1。期望可剔板恰为 AB、BC、CA，两笔净差区间分别为 [0,1]（不入账）与 [1,1]（入账 1）。
+- `scripts/reconcile_month_end_demo.py`：12,000 批月末大例驱动，全部数据脚本内现造（共用一份底稿、独立零点、12,000 块板的单环），只给对账进程设 `RLIMIT_CPU=90`，并逐板号、逐查询字段核对完整报告。
+
 

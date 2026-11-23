@@ -1,0 +1,84 @@
+{
+  "analytes": [
+    "X"
+  ],
+  "anchor": "A",
+  "batches": {
+    "A": "A",
+    "B": "B",
+    "C": "C",
+    "D": "D"
+  },
+  "panels": [
+    {
+      "id": "AB",
+      "left": [
+        "A",
+        "u0"
+      ],
+      "right": [
+        "B",
+        "u0"
+      ]
+    },
+    {
+      "id": "BC",
+      "left": [
+        "B",
+        "u0"
+      ],
+      "right": [
+        "C",
+        "u0"
+      ]
+    },
+    {
+      "id": "CD",
+      "left": [
+        "C",
+        "u0"
+      ],
+      "right": [
+        "D",
+        "u0"
+      ]
+    },
+    {
+      "id": "CA",
+      "left": [
+        "C",
+        "uca"
+      ],
+      "right": [
+        "A",
+        "u0"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "analyte_id": "X",
+      "id": "q_b_minus_c",
+      "left": [
+        "B",
+        "u0"
+      ],
+      "right": [
+        "C",
+        "u0"
+      ]
+    },
+    {
+      "analyte_id": "X",
+      "id": "q_c_minus_d",
+      "left": [
+        "C",
+        "u1"
+      ],
+      "right": [
+        "D",
+        "u1"
+      ]
+    }
+  ]
+}

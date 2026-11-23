@@ -8,6 +8,7 @@ from .disclosure import disclosure as run_disclosure
 from .disclosure import disclosure_check as run_disclosure_check
 from .explain import build_package, load_inputs
 from .io import load,publish
+from .reconcile import run_reconcile
 from .release import release as run_release
 from .release import release_show
 from .request import load_and_parse
@@ -56,8 +57,13 @@ def _disclosure_check(parser):
     parser.add_argument('--public',required=True)
     parser.add_argument('--audit',required=True)
 
+def _reconcile(parser):
+    parser.add_argument('--sources',required=True)
+    parser.add_argument('--plan',required=True)
+    parser.add_argument('--output',required=True)
+
 _SUBCOMMANDS = ('release','release-show','explain','contrast','assemble','benchmark',
-                'disclosure','disclosure-check')
+                'disclosure','disclosure-check','reconcile')
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog='peak-quant')
@@ -70,6 +76,7 @@ def main(argv=None):
     _benchmark(sub.add_parser('benchmark'))
     _disclosure(sub.add_parser('disclosure'))
     _disclosure_check(sub.add_parser('disclosure-check'))
+    _reconcile(sub.add_parser('reconcile'))
     # The v1 invocation remains the default flat form; a subparser-less call
     # keeps the historical required --source/--output contract.
     legacy=argparse.ArgumentParser(prog='peak-quant')
@@ -144,6 +151,15 @@ def main(argv=None):
             summary=run_disclosure_check(args.plan,args.public,args.audit)
             sys.stdout.buffer.write((json.dumps(
                 summary,ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
+            return 0
+        if args.command=='reconcile':
+            report=run_reconcile(args.sources,args.plan,args.output)
+            sys.stdout.buffer.write((json.dumps(
+                {'output':args.output,
+                 'status':report['status'],
+                 'removable_panels':len(report['removable_panel_ids']),
+                 'queries':len(report['queries'])},
+                ensure_ascii=False,sort_keys=True)+'\n').encode('utf-8'))
             return 0
         result=process(load(args.source));publish(args.output,result)
     except (ValueError,OSError,UnicodeError,RecursionError,json.JSONDecodeError) as e:
